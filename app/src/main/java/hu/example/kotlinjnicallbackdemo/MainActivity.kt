@@ -3,32 +3,56 @@ package hu.example.kotlinjnicallbackdemo
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import kotlinx.android.synthetic.main.activity_main.*
+import java.sql.Timestamp
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : AppCompatActivity(), AudioEngine.MusicChangedListener {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        AudioEngine.apply {
+            initEngine(assets)
+            subscribe(this@MainActivity)
+            loadClap("CLAP.mp3")
+            loadBackingTrack("FUNKY_HOUSE.mp3")
+        }
+
         btnStart.setOnClickListener {
-            tvStartValue.text = stringFromJNI()
+            AudioEngine.stopBackingTrack()
+            tvStartValue.text = getString(R.string.not_set)
+            tvEndValue.text = getString(R.string.not_set)
+            AudioEngine.playBackingTrack()
         }
         btnClap.setOnClickListener {
-            tvEndValue.text = stringFromJNI()
+            AudioEngine.clap()
         }
     }
 
-    /**
-     * A native method that is implemented by the 'native-lib' native library,
-     * which is packaged with this application.
-     */
-    external fun stringFromJNI(): String
+    override fun onStart() {
+        super.onStart()
+        AudioEngine.startEngine()
+    }
 
-    companion object {
+    override fun onStop() {
+        super.onStop()
+        AudioEngine.stopEngine()
+    }
 
-        // Used to load the 'native-lib' library on application startup.
-        init {
-            System.loadLibrary("native-lib")
+    override fun onDestroy() {
+        super.onDestroy()
+        AudioEngine.deleteSubscriptions()
+    }
+
+    override fun onMusicStarted() {
+        runOnUiThread {
+            tvStartValue.text = "${Timestamp(System.currentTimeMillis())}"
+        }
+    }
+
+    override fun onMusicEnded() {
+        runOnUiThread {
+            tvEndValue.text = "${Timestamp(System.currentTimeMillis())}"
         }
     }
 }
